@@ -3,7 +3,6 @@ package images
 import (
 	"context"
 	"encoding/base64"
-	"example/openai-image-generator/model"
 	"example/openai-image-generator/s3"
 	"log"
 	"net/http"
@@ -12,6 +11,23 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sashabaranov/go-openai"
 )
+
+type ImageRequest struct {
+	Prompt     string `json:"prompt" binding:"required"`
+	FileName   string `json:"fileName" binding:"required"`
+	BucketName string `json:"bucketName" binding:"required"`
+}
+
+type DownloadImage struct {
+	Item     string `json:"item" binding:"required"`
+	Bucket   string `json:"bucket" binding:"required"`
+	FilePath string `json:"filePath" binding:"required"`
+}
+
+type ImageRequestLocal struct {
+	Prompt   string `json:"prompt" binding:"required"`
+	FilePath string `json:"filePath" binding:"required"`
+}
 
 // must set API key in env variables first
 var client = openai.NewClient(os.Getenv("OPENAI_API_KEY"))
@@ -28,7 +44,7 @@ func SampleImage(c *gin.Context) {
 }
 
 func GenerateImageLocal(c *gin.Context) {
-	var request model.ImageRequestLocal
+	var request ImageRequestLocal
 	c.Bind(&request)
 	respData, err := imageRequest(request.Prompt)
 	if err != nil {
@@ -41,23 +57,23 @@ func GenerateImageLocal(c *gin.Context) {
 }
 
 func GenerateImageS3(c *gin.Context) {
-	var request model.ImageRequestS3
+	var request ImageRequest
 	c.Bind(&request)
 	respData, err := imageRequest(request.Prompt)
 	if err != nil {
 		log.Printf("Image creation error: %v\n", err)
 		return
 	}
-	s3.S3UploadBase64(respData, request.FileName, request.BucketName)
+	s3.Upload(respData, request.FileName, request.BucketName)
 
 	c.IndentedJSON(http.StatusOK, gin.H{"status": "Successfully saved to S3 bucket!"})
 }
 
 func DownloadImageS3(c *gin.Context) {
-	var request model.DownloadImageS3
+	var request DownloadImage
 	c.Bind(&request)
 	log.Print(request.FilePath)
-	s3.DownloadFileS3(request.Item, request.Bucket, request.FilePath)
+	s3.Download(request.Item, request.Bucket, request.FilePath)
 
 	c.IndentedJSON(http.StatusOK, gin.H{"status": "Successfully downloaded file from S3 bucket!"})
 }

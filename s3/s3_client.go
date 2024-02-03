@@ -51,7 +51,7 @@ func initDownloader() *s3manager.Downloader {
 	return s3Downloader
 }
 
-func S3UploadBase64(base64File string, objectKey string, bucketName string) error {
+func Upload(base64File string, objectKey string, bucketName string) error {
 	decode, err := base64.StdEncoding.DecodeString(base64File)
 
 	if err != nil {
@@ -71,7 +71,7 @@ func S3UploadBase64(base64File string, objectKey string, bucketName string) erro
 	return err
 }
 
-func DownloadFileS3(item string, bucket string, outputFile string) error {
+func Download(item string, bucket string, outputFile string) error {
 	downloader := initDownloader()
 
 	file, err := os.Create(outputFile)
