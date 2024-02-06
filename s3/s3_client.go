@@ -13,6 +13,18 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
+type ImageRequest struct {
+	Prompt     string `json:"prompt" binding:"required"`
+	FileName   string `json:"fileName" binding:"required"`
+	BucketName string `json:"bucketName" binding:"required"`
+}
+
+type DownloadImage struct {
+	Item     string `json:"item" binding:"required"`
+	Bucket   string `json:"bucket" binding:"required"`
+	FilePath string `json:"filePath" binding:"required"`
+}
+
 // must add environment variables for your access key & secret key
 var awsAccessKey = os.Getenv("AWS_ACCESS_KEY")
 var awsSecretKey = os.Getenv("AWS_SECRET_KEY")
@@ -31,6 +43,9 @@ func initSession() *session.Session {
 		Credentials: creds,
 	},
 	)
+	if err != nil {
+		log.Printf("Session initialization failed with error: %v\n", err)
+	}
 
 	return sess
 }
@@ -51,7 +66,7 @@ func initDownloader() *s3manager.Downloader {
 	return s3Downloader
 }
 
-func Upload(base64File string, objectKey string, bucketName string) error {
+func (image ImageRequest) Upload(base64File string) error {
 	decode, err := base64.StdEncoding.DecodeString(base64File)
 
 	if err != nil {
@@ -61,8 +76,8 @@ func Upload(base64File string, objectKey string, bucketName string) error {
 	awsSession := initAWSConnection()
 
 	uploadParams := &s3.PutObjectInput{
-		Bucket: aws.String(bucketName),
-		Key:    aws.String(objectKey),
+		Bucket: aws.String(image.BucketName),
+		Key:    aws.String(image.FileName),
 		Body:   bytes.NewReader(decode),
 	}
 
@@ -71,10 +86,10 @@ func Upload(base64File string, objectKey string, bucketName string) error {
 	return err
 }
 
-func Download(item string, bucket string, outputFile string) error {
+func (d DownloadImage) Download() error {
 	downloader := initDownloader()
 
-	file, err := os.Create(outputFile)
+	file, err := os.Create(d.FilePath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -82,11 +97,11 @@ func Download(item string, bucket string, outputFile string) error {
 	defer file.Close()
 	numBytes, err := downloader.Download(file,
 		&s3.GetObjectInput{
-			Bucket: aws.String(bucket),
-			Key:    aws.String(item),
+			Bucket: aws.String(d.Bucket),
+			Key:    aws.String(d.Item),
 		})
 	if err != nil {
-		log.Fatalf("Unable to download item %q, %v", item, err)
+		log.Fatalf("Unable to download item %q, %v", d.Item, err)
 	}
 
 	log.Println("Downloaded", file.Name(), numBytes, "bytes")

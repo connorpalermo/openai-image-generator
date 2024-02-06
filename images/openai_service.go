@@ -12,18 +12,6 @@ import (
 	"github.com/sashabaranov/go-openai"
 )
 
-type ImageRequest struct {
-	Prompt     string `json:"prompt" binding:"required"`
-	FileName   string `json:"fileName" binding:"required"`
-	BucketName string `json:"bucketName" binding:"required"`
-}
-
-type DownloadImage struct {
-	Item     string `json:"item" binding:"required"`
-	Bucket   string `json:"bucket" binding:"required"`
-	FilePath string `json:"filePath" binding:"required"`
-}
-
 type ImageRequestLocal struct {
 	Prompt   string `json:"prompt" binding:"required"`
 	FilePath string `json:"filePath" binding:"required"`
@@ -57,23 +45,23 @@ func GenerateImageLocal(c *gin.Context) {
 }
 
 func GenerateImageS3(c *gin.Context) {
-	var request ImageRequest
+	var request s3.ImageRequest
 	c.Bind(&request)
 	respData, err := imageRequest(request.Prompt)
 	if err != nil {
 		log.Printf("Image creation error: %v\n", err)
 		return
 	}
-	s3.Upload(respData, request.FileName, request.BucketName)
+	request.Upload(respData)
 
 	c.IndentedJSON(http.StatusOK, gin.H{"status": "Successfully saved to S3 bucket!"})
 }
 
 func DownloadImageS3(c *gin.Context) {
-	var request DownloadImage
+	var request s3.DownloadImage
 	c.Bind(&request)
 	log.Print(request.FilePath)
-	s3.Download(request.Item, request.Bucket, request.FilePath)
+	request.Download()
 
 	c.IndentedJSON(http.StatusOK, gin.H{"status": "Successfully downloaded file from S3 bucket!"})
 }
