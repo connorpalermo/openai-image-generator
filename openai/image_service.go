@@ -48,11 +48,14 @@ func (is *ImageService) SampleImage(c *gin.Context) {
 	respData, err := is.imageRequest(samplePrompt)
 	if err != nil {
 		is.logger.Error("error creating image", zap.Error(err))
+		c.IndentedJSON(http.StatusOK, gin.H{status: processImageError})
 		return
 	}
 	err = processB64(respData, sampleFileName)
 	if err != nil {
 		is.logger.Error(processImageError)
+		c.IndentedJSON(http.StatusOK, gin.H{status: processImageError})
+		return
 	}
 
 	is.logger.Info(localImageSuccess)
@@ -70,11 +73,14 @@ func (is *ImageService) GenerateImageLocal(c *gin.Context) {
 	respData, err := is.imageRequest(request.Prompt)
 	if err != nil {
 		is.logger.Error("error creating image", zap.Error(err))
+		c.IndentedJSON(http.StatusOK, gin.H{status: processImageError})
 		return
 	}
 	err = processB64(respData, request.FilePath)
 	if err != nil {
 		is.logger.Error(processImageError)
+		c.IndentedJSON(http.StatusOK, gin.H{status: processImageError})
+		return
 	}
 
 	is.logger.Info(localImageSuccess)
@@ -91,11 +97,13 @@ func (is *ImageService) GenerateImageS3(c *gin.Context) {
 	bindErr := c.Bind(&request)
 	if bindErr != nil {
 		is.logger.Error("request format incorrect", zap.Error(bindErr))
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{status: failedPostToS3})
 		return
 	}
 	respData, err := is.imageRequest(request.Prompt)
 	if err != nil {
 		is.logger.Error("error creating image", zap.Error(err))
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{status: failedPostToS3})
 		return
 	}
 	err = is.s3Client.Upload(request, respData)
@@ -117,6 +125,7 @@ func (is *ImageService) DownloadImageS3(c *gin.Context) {
 	bindErr := c.Bind(&request)
 	if bindErr != nil {
 		is.logger.Error("request format incorrect", zap.Error(bindErr))
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{status: failedDownloadFromS3})
 		return
 	}
 
